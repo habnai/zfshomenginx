@@ -2,15 +2,20 @@
   - name: "Setting up the home server"
     hosts: localhost
     connection: local
-    
+
     # become root user, which is needed for most tasks
     become: yes
     become_user: root
-    
+
     vars_files:
         - vars/main_vars.yml
 
     handlers:
+    - name: Start and enable docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
     - name: restart smbd
       ansible.builtin.service:
         name: smbd

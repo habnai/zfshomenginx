@@ -33,21 +33,44 @@
       - docker-compose-plugin
   notify: Start and enable docker
 
-
 - name: Ensure docker group exists
   group:
     name: docker
     state: present
-
-- name: Add user {{adminuser}} to docker group
+- name: 'Add user {{ adminuser }} to docker group'
   user:
-    name: "{{adminuser}}"
+    name: '{{ adminuser }}'
     groups: docker
-    append: yes
+    append: 'yes'
 
 - name: Create folder for docker data
   file:
     path: "{{docker.data_dir}}"
+    state: directory
+
+- name: Create folder for custom
+  file:
+    path: "{{docker.data_dir}}/custom"
+    state: directory
+
+- name: Create folder for logs
+  file:
+    path: "{{docker.data_dir}}/logs"
+    state: directory
+
+- name: Create folder for scripts
+  file:
+    path: "{{docker.data_dir}}/scripts"
+    state: directory
+
+- name: Create folder for secrets
+  file:
+    path: "{{docker.data_dir}}/secrets"
+    state: directory
+
+- name: Create folder for shared
+  file:
+    path: "{{docker.data_dir}}/shared"
     state: directory
 
 - name: Create folder for traefik data
@@ -61,11 +84,118 @@
     state: touch
     mode: '0600'
 
-- name: Copy treafik config file
-  template:
-    src: templates/traefik.toml
-    dest: "{{docker.data_dir}}/traefik/traefik.toml"
+- name: Create traefik log file
+  file:
+    path: "{{docker.data_dir}}/logs/traefik.log"
+    state: touch
 
-- name: Create the external docker network {{docker.external_network}}
-  docker_network:
-    name: "{{docker.external_network}}"
+- name: Create folder for treafik logs
+  file:
+    path: "{{docker.data_dir}}/logs/traefik"
+    state: directory
+
+- name: Create folder for web logs
+  file:
+    path: "{{docker.data_dir}}/logs/web"
+    state: directory
+
+- name: Create access log file
+  file:
+    path: "{{docker.data_dir}}/logs/access.log"
+    state: touch
+
+- name: Create folder for rules
+  file:
+    path: "{{docker.data_dir}}/traefik/rules"
+    state: directory
+
+- name: Create folder for secrets
+  file:
+    path: "{{docker.data_dir}}/traefik/secrets"
+    state: directory
+
+- name: Create folder for authelia
+  file:
+    path: "{{docker.data_dir}}/authelia"
+    state: directory
+
+- name: Create access multiple file for docker
+  file:
+    path: "{{docker.data_dir}}/traefik/rules/{{ item }}"
+    state: touch
+  with_items:
+  - tls-opts.yml
+  - middlewares.yml
+  - middlewares-chains.yml
+- name: Create access multiple file for authelia
+  file:
+    path: "{{docker.data_dir}}/authelia/{{ item }}"
+    state: touch
+  with_items:
+  - configuration.yml
+  - users_database.yml
+- name: Copy treafik config file
+  ansible.builtin.copy:
+    src: templates/tls-opts.yml
+    dest: "{{docker.data_dir}}/traefik/rules/tls-opts.yml"
+
+- name: Copy treafik middlewares file
+  ansible.builtin.copy:
+    src: templates/middlewares.yml
+    dest: "{{docker.data_dir}}/traefik/rules/middlewares.yml"
+
+- name: Copy treafik middlewares-chains file
+  ansible.builtin.copy:
+    src: templates/middlewares-chains.yml
+    dest: "{{docker.data_dir}}/traefik/rules/middlewares-chains.yml"
+
+- name: Copy treafik htpasswd file
+  ansible.builtin.copy:
+    src: templates/htpassword
+    dest: "{{docker.data_dir}}/traefik/secrets/htpasswd"
+
+- name: Copy treafik cloudns_mail file
+  ansible.builtin.copy:
+    src: templates/cloudns_mail
+    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_mail"
+
+- name: Copy treafik cloudns_id file
+  ansible.builtin.copy:
+    src: templates/cloudns_id
+    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_id"
+
+- name: Copy treafik cloud_pass file
+  ansible.builtin.copy:
+    src: templates/cloudns_pass
+    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_pass"
+
+- name: Create file authalia file
+  file:
+    path: "{{docker.data_dir}}/authelia/notification.txt"
+    state: touch
+
+- name: Copy authelia config file
+  ansible.builtin.copy:
+    src: templates/configuration.yml
+    dest: "{{docker.data_dir}}/authelia/configuration.yml"
+
+- name: Copy authelia user file
+  ansible.builtin.copy:
+    src: templates/users_database.yml
+    dest: "{{docker.data_dir}}/authelia/users_database.yml"
+
+- name: Copy authelia_jwt_secret config file
+  ansible.builtin.copy:
+    src: templates/authelia_jwt_secret
+    dest: "{{docker.data_dir}}/traefik/secrets/authelia_jwt_secret"
+
+- name: Copy authelia_session_secret config file
+  ansible.builtin.copy:
+    src: templates/authelia_session_secret
+    dest: "{{docker.data_dir}}/traefik/secrets/authelia_session_secret"
+
+- name: Copy authelia_storage_encryption_key config file
+  ansible.builtin.copy:
+    src: templates/authelia_storage_encryption_key
+    dest: "{{docker.data_dir}}/traefik/secrets/authelia_storage_encryption_key"
+

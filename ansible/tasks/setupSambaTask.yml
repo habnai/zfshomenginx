@@ -1,9 +1,10 @@
 ---
 - name: Install generic needed packages
-  apt:
+  dnf:
     name:
     - samba
-    - samba-vfs-modules
+    - samba-common
+    - samba-client
     state: latest
     cache_valid_time: 3600
 

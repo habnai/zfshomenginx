@@ -14,15 +14,15 @@ PO_UK=def456
 # -------------- program, don't change ---------------
 hasRecentBackups=false
 
-for BACKUPPOOL in ${BACKUPPOOLS[@]}
+for BACKUPPOOL in "${BACKUPPOOLS[@]}"
 do
-	isOnline=$(/sbin/zpool status $BACKUPPOOL | grep -i 'state: ONLINE' | wc -l)
+	isOnline=$(/sbin/zpool status "$BACKUPPOOL" | grep -i 'state: ONLINE' | wc -l)
 
-	if [ $isOnline -ge 1 ]
+	if [ "$isOnline" -ge 1 ]
 	then
 		echo "$(date) - Found online pool $BACKUPPOOL" >> $LOGFILE
 		# find and compare latest snapshot to today
-		lastestSnapshotDate=$($ZFS list -t snapshot -o name -s creation -r $BACKUPPOOL | tail -1 | egrep -o '[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}-[[:digit:]]{4}')
+		lastestSnapshotDate=$($ZFS list -t snapshot -o name -s creation -r "$BACKUPPOOL" | tail -1 | egrep -o '[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}-[[:digit:]]{4}')
 		timeAtStartOfTheDay=$(date +"%Y-%m-%d"-0000)
 		echo "$(date) - Lastest date from the pool $BACKUPPOOL are from $lastestSnapshotDate and today started at $timeAtStartOfTheDay" >> $LOGFILE
 
