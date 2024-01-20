@@ -4,13 +4,35 @@
     src: templates/dockerEnv.env
     dest: "../.env"
 
-- name: Install the needed docker packages
-  apt:
-    name:
-    - docker
-    - docker-compose
+- name: Update DNF cache
+  dnf:
+    name: '*'
     state: latest
-    cache_valid_time: 3600
+  become: yes
+
+- name: Upgrade all packages
+  dnf:
+    name: '*'
+    state: latest
+  become: yes
+
+- name: Set up docker repository
+  shell: |
+    dnf install -y yum-utils
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    warn: no
+
+- name: Install Docker
+  dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+  notify: Start and enable docker
+
 
 - name: Ensure docker group exists
   group:
