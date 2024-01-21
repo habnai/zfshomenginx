@@ -17,7 +17,7 @@ users:
   - {name: 'thirduser', groups: 'family', smbpasswd: 'thirduser'}
   - {name: 'userNotInGroups', groups: '', smbpasswd: 'userNotInGroups'}
 
-adminuser: habnai # should be an existing one from above
+adminuser: mainuser # should be an existing one from above
 
 shared_folders:
   - {name: 'Images', path: '/{{zfs.poolName}}/media/images'}
