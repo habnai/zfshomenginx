@@ -9,7 +9,7 @@
 
 - name: Start and enable the smb service
   systemd:
-    name: smbd
+    name: smb
     enabled: yes
     state: started
 
@@ -24,7 +24,7 @@
     owner: root
     group: root
     mode: 0644
-- name: Restart smbd service after share configuration
+- name: Restart smb service after share configuration
   systemd:
-    name: smbd
+    name: smb
     state: restarted

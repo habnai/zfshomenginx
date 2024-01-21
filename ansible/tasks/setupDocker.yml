@@ -3,34 +3,37 @@
   template:
     src: templates/dockerEnv.env
     dest: "../.env"
-- name: apt
-  apt:
-    update_cache: yes
-    upgrade: yes
-- name: Install required packages
-  apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg2
-      - software-properties-common
 
+- name: Update DNF cache
+  dnf:
+    name: '*'
+    state: latest
+  become: yes
+
+- name: Upgrade all packages
+  dnf:
+    name: '*'
+    state: latest
+  become: yes
+
+- name: Install required dependencies
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - dnf-plugins-core
+    - yum-utils
 - name: Add Docker GPG key
-  apt_key:
-    url: https://download.docker.com/linux/debian/gpg
-    state: present
-
+  command: "{{ item }}"
+  loop:
+    - rpm --import https://download.docker.com/linux/centos/gpg
 - name: Add Docker repository
-  apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/debian bullseye stable
-    state: present
-- name: apt
-  apt:
-    update_cache: yes
-    upgrade: yes
+  command: "{{ item }}"
+  loop:
+    - dnf config-manager --add-repo=https://download.docker.com/linux/centos/9/$basearch/stable
+
 - name: Install Docker
-  apt:
+  dnf:
     name:
       - docker-ce
       - docker-ce-cli

@@ -1,11 +1,4 @@
 ---
-- name: Install zfs and auto-snapshot
-  apt:
-    name:
-    - zfsutils-linux
-    - zfs-auto-snapshot
-    state: latest
-    cache_valid_time: 36000
 # Gather space usage about all imported ZFS pools
 - zpool_facts: properties='free,size'
 
