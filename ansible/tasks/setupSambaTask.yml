@@ -28,3 +28,14 @@
   systemd:
     name: smb
     state: restarted
+- name: Add Samba service to firewall
+  firewalld:
+    service: samba
+    permanent: yes
+    state: enabled
+  notify:
+    - Reload firewall
+
+- name: Reload firewall
+  command: firewall-cmd --reload
+  when: "'Reload firewall' in changed_tasks"
