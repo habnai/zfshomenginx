@@ -1,111 +1,296 @@
-version: "3.3"
-
+version: "3.9"
 networks:
-  traefik_proxy:
-    external:
-      name: traefik_proxy
+  net_proxy:
+    name: net_proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.11.90.0/24
   default:
     driver: bridge
+  socket_proxy:
+    name: socket_proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.11.91.0/24
+########################### SECRETS
+secrets:
+  mysql_root_password:
+    file: ${DATADIR}/secrets/mysql_root_password
+  authelia_jwt_secret:
+    file: ${DATADIR}/traefik/secrets/authelia_jwt_secret
+  authelia_session_secret:
+    file: ${DATADIR}/traefik/secrets/authelia_session_secret
+  authelia_storage_encryption_key:
+    file: ${DATADIR}/traefik/secrets/authelia_storage_encryption_key
+  authelia_notifier_smtp_password:
+    file: ${DATADIR}/traefik/secrets/authelia_notifier_smtp_password
+  cloudns_sub_auth_id:
+    file: ${DATADIR}/traefik/secrets/cloudns_sub_auth_id
+  cloudns_auth_password:
+    file: ${DATADIR}/traefik/secrets/cloudns_auth_password
 
+# Common environment values
+x-environment: &default-tz-puid-pgid
+  TZ: ${TIMEZONE}
+  PUID: ${PUID}
+  PGID: ${PGID}
+
+# Keys common to some of the services in basic-services.txt
+x-common-keys-core: &common-keys-core
+  networks:
+    - net_proxy
+  security_opt:
+    - no-new-privileges:true
+  restart: always
+  # profiles:
+  # - core
+
+# Keys common to some of the services in basic-services.txt
+x-common-keys-monitoring: &common-keys-monitoring
+  networks:
+    - net_proxy
+  security_opt:
+    - no-new-privileges:true
+  restart: always
+  # profiles:
+  # - monitoring
+
+# Keys common to some of the dependent services/apps
+x-common-keys-apps: &common-keys-apps
+  networks:
+    - net_proxy
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  # profiles:
+  # - apps
+
+# Keys common to some of the services in media-services.txt
+x-common-keys-media: &common-keys-media
+  networks:
+    - net_proxy
+  security_opt:
+    - no-new-privileges:true
+  restart: "no"
+  # profiles:
+  # - media
+
+########################### SERVICES
 services:
+  ############################# FRONTENDS
   traefik:
-    hostname: traefik
-    image: traefik:v1.7.16
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: traefik
-    restart: unless-stopped
-    domainname: ${DOMAINNAME}
+    image: traefik:v2.9
+    command: # CLI arguments
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=false
+      - --entryPoints.http.address=:80
+      - --entryPoints.https.address=:443
+      - --entryPoints.traefik.address=:8080
+      # - --entryPoints.ping.address=:8081
+      - --api=true
+      - --api.dashboard=true
+      #- --ping=true
+      # - --serversTransport.insecureSkipVerify=true
+      - --log=true
+      - --log.filePath=/logs/traefik.log
+      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --accessLog=true
+      - --accessLog.filePath=/logs/access.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --providers.docker=true
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Use Docker Socket Proxy instead for improved security
+      - --providers.docker.endpoint=tcp://socket-proxy:2375
+      # Automatically set Host rule for services
+      # - --providers.docker.defaultrule=Host(`{{ index .Labels "com.docker.compose.service" }}.$DOMAINNAME_CLOUD_SERVER`)
+      - --providers.docker.exposedByDefault=false
+      # - --entrypoints.https.http.middlewares=chain-oauth@file
+      - --entrypoints.https.http.tls.options=tls-opts@file
+      - --providers.docker.network=net_proxy
+      - --providers.docker.swarmMode=false
+      - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
+      # - --providers.file.filename=/path/to/file # Load dynamic configuration from a file
+      - --providers.file.watch=true 
+      - --certificatesresolvers.cloudns.acme.dnsChallenge.provider=cloudns
+      - --certificatesresolvers.cloudns.acme.email=habnai@inmaily.com
+      - --certificatesresolvers.cloudns.acme.storage=/etc/traefik/acme/acme.json
+
     networks:
-      - default
-      - traefik_proxy
+      net_proxy:
+        ipv4_address: 10.11.90.254 # You can specify a static IP
+      socket_proxy:
     ports:
-      - "81:80"
-      - "443:443"
-      - "7080:8080"
-    labels:
-      - "traefik.enable=false"
-      - "traefik.backend=traefik"
-      - "traefik.frontend.rule=Host:traefik.${DOMAINNAME}"  
-      - "traefik.port=7080"
-      - "traefik.docker.network=traefik_proxy"
-      - "traefik.frontend.headers.SSLRedirect=true"
-      - "traefik.frontend.headers.STSSeconds=315360000"
-      - "traefik.frontend.headers.browserXSSFilter=true"
-      - "traefik.frontend.headers.contentTypeNosniff=true"
-      - "traefik.frontend.headers.forceSTSHeader=true"
-      - "traefik.frontend.headers.SSLHost=${DOMAINNAME}"
-      - "traefik.frontend.headers.STSIncludeSubdomains=true"
-      - "traefik.frontend.headers.STSPreload=true"
-      - "traefik.frontend.headers.frameDeny=true"
-      #- "traefik.frontend.auth.basic.users=${HTTP_USERNAME}:${HTTP_PASSWORD}"
-      - "com.centurylinklabs.watchtower.enable=false"
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "${DATADIR}/traefik/traefik.toml:/traefik.toml"
-      - "${DATADIR}/traefik/acme:/etc/traefik/acme"
-
-  portainer:
-    image: portainer/portainer:1.22.1
-    container_name: portainer
-    restart: unless-stopped
-    command: --admin-password ${PORTAINER_ADMIN_PW}
-    ports:
-      - 9000:9000
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${DATADIR}/portainer/data:/data
-    networks:
-      - default
-      - traefik_proxy
-    labels:
-      - "traefik.enable=false"
-      - "traefik.backend=portainer"
-      - "traefik.port=9000"
-      - "traefik.frontend.rule=Host:portainer.${DOMAINNAME}"  
-      - "traefik.docker.network=traefik_proxy"
-
-  whoami:
-    image: containous/whoami
-    container_name: whoami
-    restart: unless-stopped
-    networks:
-      #- default
-      - traefik_proxy
-    labels:
-      - "traefik.enable=false"
-      - "traefik.backend=whoami"
-      - "traefik.frontend.rule=Host:whoami.${DOMAINNAME}"  
-      - "traefik.docker.network=traefik_proxy"
-
-  heimdall:
-    image: linuxserver/heimdall
-    container_name: heimdall
-    restart: unless-stopped
+      - ${DATADIR}/traefik/rules:/rules # file provider directory
+      - ${DATADIR}/logs/traefik:/logs # for fail2ban or crowdsec
+      - /etc/localtime:/etc/localtime:ro
+      - ${DATADIR}/traefik/acme:/etc/traefik/acme
     environment:
+      - TZ=${TIMEZONE}
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ${DATADIR}/heimdall:/config
-    ports:
-      - 9080:80
-      - 9443:443
-    networks:
-      - default
-      - traefik_proxy
-    labels:
-      - "traefik.enable=false"
-      - "traefik.backend=heimdall"
-      - "traefik.port=80"
-      - "traefik.frontend.rule=Host:heimdall.${DOMAINNAME}"  
-      - "traefik.docker.network=traefik_proxy"
+      - CLOUDNS_SUB_AUTH_ID_FILE=/run/secrets/cloudns_sub_auth_id
+      - CLOUDNS_AUTH_PASSWORD_FILE=/run/secrets/cloudns_auth_password
+    secrets:
+      - cloudns_sub_auth_id
+      - cloudns_auth_password
 
-  watchtower:
-    container_name: watchtower
-    image: containrrr/watchtower
+    labels:
+      - "traefik.enable=true"
+      # HTTP-to-HTTPS Redirect
+      #- "traefik.http.routers.http-catchall.entrypoints=http"
+      #- "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
+      #- "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.traefik-rtr.entrypoints=https"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.habnai.com`)"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik-rtr.tls.certresolver=cloudns"
+     # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
+  socket-proxy:
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
+    container_name: socket-proxy
+    image: tecnativa/docker-socket-proxy
+    networks:
+      socket_proxy:
+        ipv4_address: 10.11.91.254 # You can specify a static IP
+    # privileged: true # true for VM. False for unprivileged LXC container.
+    ports:
+    - "127.0.0.1:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
+    # I use the next line instead, as I want portainer to manage multiple docker endpoints within my home network.
+    #- "2375:2375"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
-      - TZ=${TZ}
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_NOTIFICATIONS=shoutrrr
-      - WATCHTOWER_NOTIFICATION_URL=pushover://shoutrrr:${PO_TOKEN}@${PO_USERKEY}
+      - LOG_LEVEL=info # debug,info,notice,warning,err,crit,alert,emerg
+      ## Variables match the URL prefix (i.e. AUTH blocks access to /auth/* parts of the API, etc.).
+      # 0 to revoke access.
+      # 1 to grant access.
+      ## Granted by Default
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      ## Revoked by Default
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1 # Watchtower
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1 # Traefik, portainer, etc.
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1 # Portainer
+      - INFO=1 # Portainer
+      - NETWORKS=1 # Portainer
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=1 # Portainer
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=1 # Portainer
+      - VOLUMES=1 # Portainer
+   # Authelia (Lite) - Self-Hosted Single Sign-On and Two-Factor Authentication
+  authelia:
+    container_name: authelia
+    # Check this before upgrading: https://github.com/authelia/authelia/blob/master/BREAKING.md
+    image: authelia/authelia:latest
+    restart: always
+    networks:
+      - net_proxy
+    ports:
+      - "127.0.0.1:9091:9091"
+    volumes:
+      - ${DATADIR}/authelia:/config
+    environment:
+      - TZ=${TIMEZONE}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - AUTHELIA_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/authelia_session_secret
+      - AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE=/run/secrets/authelia_notifier_smtp_password
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/run/secrets/authelia_storage_encryption_key
+    secrets:
+      - authelia_jwt_secret
+      - authelia_session_secret
+      - authelia_notifier_smtp_password
+      - authelia_storage_encryption_key
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.authelia-rtr.entrypoints=https"
+      - "traefik.http.routers.authelia-rtr.rule=Host(`authelia.habnai.com`)"
+      - "traefik.http.routers.authelia-rtr.tls=true"
+      ## Middlewares
+      - "traefik.http.routers.authelia-rtr.middlewares=chain-authelia@file"
+      ## HTTP Services
+      - "traefik.http.routers.authelia-rtr.service=authelia-svc"
+      - "traefik.http.services.authelia-svc.loadbalancer.server.port=9091"
+  # Portainer - WebUI for Containers
+  portainer:
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    # command: -H unix:///var/run/docker.sock # # Use Docker Socket Proxy instead for improved security
+    command: -H tcp://socket-proxy:2375
+    networks:
+      - net_proxy
+      - socket_proxy
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      # - /var/run/docker.sock:/var/run/docker.sock:ro # # Use Docker Socket Proxy instead for improved security
+      - ${DATADIR}/portainer/data:/data # Change to local directory if you want to save/transfer config locally
+    environment:
+      <<: *default-tz-puid-pgid
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.portainer-rtr.entrypoints=https"
+      - "traefik.http.routers.portainer-rtr.rule=Host(`portainer.habnai.com`)"
+      - "traefik.http.routers.portainer-rtr.tls=true"
+      ## Middlewares
+      - "traefik.http.routers.portainer-rtr.middlewares=chain-authelia@file"
+      ## HTTP Services
+      - "traefik.http.routers.portainer-rtr.service=portainer-svc"
+      - "traefik.http.services.portainer-svc.loadbalancer.server.port=9000"
+  # Flame - Application Dashboard
+  homarr:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: ghcr.io/ajnart/homarr:latest
+    container_name: homarr
+    networks:
+      - net_proxy
+      - socket_proxy
+    ports:
+      - "127.0.0.1:7575:7575"
+    volumes:
+      - ${DATADIR}/homarr/configs:/app/data/configs
+      - ${DATADIR}/homarr/icons:/app/public/icons
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.homarr-rtr.entrypoints=https"
+      - "traefik.http.routers.homarr-rtr.rule=Host(`homar.habnai.com`)"
+      - "traefik.http.routers.homarr-rtr.tls=true"
+      - "traefik.http.routers.homarr-rtr.middlewares=chain-authelia@file"
+      ## HTTP Services
+      - "traefik.http.routers.homarr-rtr.service=homarr-svc"
+      - "traefik.http.services.homarr-svc.loadbalancer.server.port=7575"
+

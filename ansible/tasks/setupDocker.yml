@@ -16,12 +16,23 @@
     state: latest
   become: yes
 
-- name: Set up docker repository
-  shell: |
-    dnf install -y yum-utils
-    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-  args:
-    warn: no
+- name: Install required dependencies
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - dnf-plugins-core
+    - yum-utils
+
+- name: Add Docker GPG key
+  command: "{{ item }}"
+  loop:
+    - rpm --import https://download.docker.com/linux/centos/gpg
+
+- name: Add Docker repository
+  command: "{{ item }}"
+  loop:
+    - dnf config-manager --add-repo=https://download.docker.com/linux/centos/9/$basearch/stable
 
 - name: Install Docker
   dnf:
@@ -153,21 +164,6 @@
   ansible.builtin.copy:
     src: templates/htpassword
     dest: "{{docker.data_dir}}/traefik/secrets/htpasswd"
-
-- name: Copy treafik cloudns_mail file
-  ansible.builtin.copy:
-    src: templates/cloudns_mail
-    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_mail"
-
-- name: Copy treafik cloudns_id file
-  ansible.builtin.copy:
-    src: templates/cloudns_id
-    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_id"
-
-- name: Copy treafik cloud_pass file
-  ansible.builtin.copy:
-    src: templates/cloudns_pass
-    dest: "{{docker.data_dir}}/traefik/secrets/cloudns_pass"
 
 - name: Create file authalia file
   file:

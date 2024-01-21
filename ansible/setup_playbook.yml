@@ -16,10 +16,6 @@
         name: docker
         state: started
         enabled: yes
-    - name: restart smbd
-      ansible.builtin.service:
-        name: smbd
-        state: restarted
 
     tasks:
     - import_tasks: tasks/setupZFStask.yml

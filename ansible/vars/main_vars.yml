@@ -2,9 +2,9 @@
 # all non secret vars
 zfs: {
   poolName: dataPool,
-  DISK1: '/dev/disk/by-id/scsi-123abc',
-  DISK2: '/dev/disk/by-id/scsi-456def',
-  CACHEDISK: '/dev/disk/by-id/scsi-424242ababab',
+  DISK1: '/dev/disk/by-id/ata-VBOX_HARDDISK_VBdb921551-0235d4da',
+  DISK2: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB63d0dcbf-e8993416',
+  CACHEDISK: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB119a87ff-73029b84',
 }
 
 usergroups:
@@ -17,7 +17,7 @@ users:
   - {name: 'thirduser', groups: 'family', smbpasswd: 'thirduser'}
   - {name: 'userNotInGroups', groups: '', smbpasswd: 'userNotInGroups'}
 
-adminuser: mainuser # should be an existing one from above
+adminuser: habnai # should be an existing one from above
 
 shared_folders:
   - {name: 'Images', path: '/{{zfs.poolName}}/media/images'}
@@ -28,7 +28,7 @@ shared_folders:
 shared_folders_group: family
 
 docker: {
-  external_network: traefik_proxy,
+  external_network: net_proxy,
   data_dir: '/{{zfs.poolName}}/docker/data',
   # data for docker env
   PUID: '1000',

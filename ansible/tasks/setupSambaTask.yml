@@ -6,11 +6,11 @@
     - samba-common
     - samba-client
     state: latest
-    cache_valid_time: 3600
 
-- name: Start samba service, if not started
-  ansible.builtin.service:
-    name: smbd
+- name: Start and enable the smb service
+  systemd:
+    name: smb
+    enabled: yes
     state: started
 
 - name: Create/update samba users
@@ -24,5 +24,7 @@
     owner: root
     group: root
     mode: 0644
-  notify:
-    - restart smbd
+- name: Restart smb service after share configuration
+  systemd:
+    name: smb
+    state: restarted
