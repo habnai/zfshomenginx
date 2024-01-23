@@ -1,6 +1,6 @@
 ---
 - name: Install generic needed packages
-  dnf:
+  apt:
     name:
     - samba
     - samba-common
@@ -24,18 +24,7 @@
     owner: root
     group: root
     mode: 0644
-- name: Restart smb service after share configuration
+- name: Restart smbd service after share configuration
   systemd:
-    name: smb
+    name: smbd
     state: restarted
-- name: Add Samba service to firewall
-  firewalld:
-    service: samba
-    permanent: yes
-    state: enabled
-  notify:
-    - Reload firewall
-
-- name: Reload firewall
-  command: firewall-cmd --reload
-  when: "'Reload firewall' in changed_tasks"

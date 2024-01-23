@@ -2,9 +2,9 @@
 # all non secret vars
 zfs: {
   poolName: dataPool,
-  DISK1: '/dev/disk/by-id/ata-VBOX_HARDDISK_VBdb921551-0235d4da',
-  DISK2: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB63d0dcbf-e8993416',
-  CACHEDISK: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB119a87ff-73029b84',
+  DISK1: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB1e8d1f50-ba9244f7',
+  DISK2: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB31894c10-b40e4ca9',
+  CACHEDISK: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB53c5abdb-561c51fe',
 }
 
 usergroups:
@@ -12,12 +12,12 @@ usergroups:
   - admins
 
 users:
-  - {name: 'mainuser', groups: 'family, admins', smbpasswd: 'mainuser'}
+  - {name: 'habnai', groups: 'family, admins', smbpasswd: 'mainuser'}
   - {name: 'otheruser', groups: 'family', smbpasswd: 'otheruser'}
   - {name: 'thirduser', groups: 'family', smbpasswd: 'thirduser'}
   - {name: 'userNotInGroups', groups: '', smbpasswd: 'userNotInGroups'}
 
-adminuser: mainuser # should be an existing one from above
+adminuser: habnai # should be an existing one from above
 
 shared_folders:
   - {name: 'Images', path: '/{{zfs.poolName}}/media/images'}
