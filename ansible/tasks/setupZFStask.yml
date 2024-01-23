@@ -1,13 +1,19 @@
 ---
-- name: Install ZFS repository
-  dnf:
-    name: "https://zfsonlinux.org/epel/zfs-release-2-3{{ rpm --eval '%{dist}' }}.noarch.rpm"
-    state: present
+- name: Update APT package cache
+  apt:
+    update_cache: yes
 
-- name: Install ZFS package
-  dnf:
-    name: zfs
+- name: Install linux-headers-amd64 package
+  apt:
+    name: linux-headers-amd64
     state: present
+- name: Install zfsutils-linux from stable-backports
+  apt:
+    name: zfsutils-linux
+    state: present
+    default_release: stable-backports
+- name: Load ZFS kernel module
+  command: modprobe zfs
 
 - name: Configure ZFS module
   copy:
