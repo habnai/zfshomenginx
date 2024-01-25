@@ -12,12 +12,12 @@ usergroups:
   - admins
 
 users:
-  - {name: 'habnai', groups: 'family, admins', smbpasswd: 'mainuser'}
+  - {name: 'mainuser', groups: 'family, admins', smbpasswd: 'mainuser'}
   - {name: 'otheruser', groups: 'family', smbpasswd: 'otheruser'}
   - {name: 'thirduser', groups: 'family', smbpasswd: 'thirduser'}
   - {name: 'userNotInGroups', groups: '', smbpasswd: 'userNotInGroups'}
 
-adminuser: habnai # should be an existing one from above
+adminuser: mainuser # should be an existing one from above
 
 shared_folders:
   - {name: 'Images', path: '/{{zfs.poolName}}/media/images'}

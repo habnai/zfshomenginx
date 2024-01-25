@@ -1,24 +1,26 @@
 ---
-- name: Update APT package cache
-  apt:
-    update_cache: yes
-
-- name: Install linux-headers-amd64 package
-  apt:
-    name: linux-headers-amd64
+- name: Download and install ZFS repository package
+  yum:
+    name: "https://zfsonlinux.org/epel/zfs-release-2-3{{ rpm --eval '%{dist}' }}.noarch.rpm"
     state: present
-- name: Install zfsutils-linux from stable-backports
-  apt:
-    name: zfsutils-linux
-    state: present
-    default_release: stable-backports
-- name: Load ZFS kernel module
-  command: modprobe zfs
 
-- name: Configure ZFS module
-  copy:
-    content: "zfs"
-    dest: "/etc/modules-load.d/zfs.conf"
+- name: Disable original ZFS repository
+  command: yum-config-manager --disable zfs
+
+- name: Enable ZFS kernel module repository
+  command: yum-config-manager --enable zfs-kmod
+
+- name: Install ZFS
+  yum:
+    name: zfs
+    state: present
+
+- name: Add ZFS module to /etc/modules-load.d/zfs.conf
+  lineinfile:
+    path: /etc/modules-load.d/zfs.conf
+    line: "zfs"
+    create: yes
+
 # Gather space usage about all imported ZFS pools
 - zpool_facts: properties='free,size'
 

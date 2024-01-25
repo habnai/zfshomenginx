@@ -1,24 +1,15 @@
----
+--
 - name: Setup docker .env file
   template:
     src: templates/dockerEnv.env
     dest: "../.env"
-- name: Update the apt package index
-  become: yes
-  apt:
-    name: "*"
-    state: latest
-    update_cache: yes
-    force_apt_get: yes
-- name: Install packages for apt add repository over HTTPS
-  become: yes
-  apt:
-    name: "{{ packagesdep }}"
-    force_apt_get: yes
-    state: latest
-    update_cache: yes
-  vars:
-    packagesdep:
+- name: Install required packages
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - dnf-plugins-core
+    - yum-utils
     - git
     - apt-transport-https
     - ca-certificates
@@ -26,31 +17,30 @@
     - software-properties-common
     - gnupg2
     - curl
-- name: Add Apt signing key from official docker repo
-  apt_key:
-    url: https://download.docker.com/linux/debian/gpg
-    state: present
-- name: add docker official repository for Debian
-  apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/debian bookworm stable
-    state: present
-- name: Index new repo into the cache
-  become: yes
-  apt:
-    name: "*"
-    state: latest
-    update_cache: yes
-    force_apt_get: yes
+  when: ansible_distribution == 'Alma Linux'
+
+- name: Add Docker repository
+  command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+  when: ansible_distribution == 'Alma Linux'
 
 - name: Install Docker
-  apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
-  notify: Start and enable docker
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+  when: ansible_distribution == 'Alma Linux'
+
+- name: Start and enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  when: ansible_distribution == 'Alma Linux'
 
 - name: Ensure docker group exists
   group:
