@@ -33,14 +33,12 @@
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
-  when: ansible_distribution == 'Alma Linux'
 
 - name: Start and enable Docker service
   service:
     name: docker
     state: started
     enabled: yes
-  when: ansible_distribution == 'Alma Linux'
 
 - name: Ensure docker group exists
   group:
