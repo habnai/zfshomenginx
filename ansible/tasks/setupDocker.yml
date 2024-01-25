@@ -1,8 +1,9 @@
---
+---
 - name: Setup docker .env file
   template:
     src: templates/dockerEnv.env
     dest: "../.env"
+
 - name: Install required packages
   package:
     name: "{{ item }}"
@@ -17,11 +18,10 @@
     - software-properties-common
     - gnupg2
     - curl
-  when: ansible_distribution == 'Alma Linux'
 
 - name: Add Docker repository
   command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-  when: ansible_distribution == 'Alma Linux'
+
 
 - name: Install Docker
   dnf:

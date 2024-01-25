@@ -1,8 +1,6 @@
 ---
-- name: Download and install ZFS repository package
-  yum:
-    name: "https://zfsonlinux.org/epel/zfs-release-2-3{{ rpm --eval '%{dist}' }}.noarch.rpm"
-    state: present
+- name: Install ZFS repository package
+  shell: "dnf install -y https://zfsonlinux.org/epel/zfs-release-2-3.el9.noarch.rpm"
 
 - name: Disable original ZFS repository
   command: yum-config-manager --disable zfs
@@ -20,7 +18,10 @@
     path: /etc/modules-load.d/zfs.conf
     line: "zfs"
     create: yes
-
+- name: Load ZFS modules
+  command: /sbin/modprobe zfs
+  become: yes
+# Gather space
 # Gather space usage about all imported ZFS pools
 - zpool_facts: properties='free,size'
 
