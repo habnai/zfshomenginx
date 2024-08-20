@@ -46,9 +46,8 @@ shared_folders:
 shared_folders_group: family
 
 docker:
-  external_network: net_proxy
   data_dir: /{{ zfs.poolName }}/docker/data
-  media_storag: /media/storage
+  media_storage: /media/storage
   hostname: udms
   puid: 1000
   pgid: 115

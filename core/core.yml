@@ -1,11 +1,4 @@
-version: "3.9"
 networks:
-  net_proxy:
-    name: net_proxy
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.11.90.0/24
   default:
     driver: bridge
   socket_proxy:
@@ -14,70 +7,39 @@ networks:
     ipam:
       config:
         - subnet: 10.11.91.0/24
+  net_proxy:
+    name: net_proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.11.90.0/24
+
 ########################### SECRETS
 secrets:
-  mysql_root_password:
-    file: ${DATADIR}/secrets/mysql_root_password
-# Common environment values
-x-environment: &default-tz-puid-pgid
-  TZ: ${TIMEZONE}
-  PUID: ${PUID}
-  PGID: ${PGID}
-
-# Keys common to some of the services in basic-services.txt
-x-common-keys-core: &common-keys-core
-  networks:
-    - net_proxy
-  security_opt:
-    - no-new-privileges:true
-  restart: always
-  # profiles:
-  # - core
-
-# Keys common to some of the services in basic-services.txt
-x-common-keys-monitoring: &common-keys-monitoring
-  networks:
-    - net_proxy
-  security_opt:
-    - no-new-privileges:true
-  restart: always
-  # profiles:
-  # - monitoring
-
-# Keys common to some of the dependent services/apps
-x-common-keys-apps: &common-keys-apps
-  networks:
-    - net_proxy
-  security_opt:
-    - no-new-privileges:true
-  restart: unless-stopped
-  # profiles:
-  # - apps
-
-# Keys common to some of the services in media-services.txt
-x-common-keys-media: &common-keys-media
-  networks:
-    - net_proxy
-  security_opt:
-    - no-new-privileges:true
-  restart: "no"
-  # profiles:
-  # - media
-
-########################### SERVICES
+  basic_auth_credentials:
+    file: $DATADIR/secrets/basic_auth_credentials
+  guac_db_name:
+    file: $DATADIR/secrets/guac_db_name
+  guac_mysql_user:
+    file: $DATADIR/secrets/guac_mysql_user
+  guac_mysql_password:
+    file: $DATADIR/secrets/guac_mysql_password
 services:
+  # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
   socket-proxy:
-    <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: socket-proxy
     image: tecnativa/docker-socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
     networks:
       socket_proxy:
-        ipv4_address: 10.11.91.254 # You can specify a static IP
+        ipv4_address: 192.168.91.254 # You can specify a static IP
     # privileged: true # true for VM. False for unprivileged LXC container.
     ports:
-    - "127.0.0.1:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
-    # I use the next line instead, as I want portainer to manage multiple docker endpoints within my home network.
-    #- "2375:2375"
+      #  - "$ZEROTIER_IP_CLOUDSERVER:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
+      # I use the next line instead, as I want portainer to manage multiple docker endpoints within my home network.
+      - "2375:2375" # Do not expose this to the internet with port forwarding
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
     environment:
@@ -112,33 +74,38 @@ services:
       - SYSTEM=0
       - TASKS=1 # Portainer
       - VOLUMES=1 # Portainer
-  # Portainer - WebUI for Containers
   portainer:
-    <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: portainer
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ee:latest # Use portainer-ce if you do no have a Business Edition license key
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - net_proxy
+      - socket_proxy
     # command: -H unix:///var/run/docker.sock # # Use Docker Socket Proxy instead for improved security
     command: -H tcp://socket-proxy:2375
-    networks:
-      - net_proxy
-      - socket_proxy
     ports:
-      - "127.0.0.1:9000:9000"
+      - "9000:9000"
     volumes:
       # - /var/run/docker.sock:/var/run/docker.sock:ro # # Use Docker Socket Proxy instead for improved security
-      - ${DATADIR}/portainer/data:/data # Change to local directory if you want to save/transfer config locally
+      - $DATADIR/portainer/data:/data # Change to local directory if you want to save/transfer config locally
     environment:
-      <<: *default-tz-puid-pgid
-  # homarr - Application Dashboard
-  homarr:
-    <<: *common-keys-apps # See EXTENSION FIELDS at the top
-    image: ghcr.io/ajnart/homarr:latest
-    container_name: homarr
+      - TZ=$TZ
+  homepage:
+    image: ghcr.io/benphelps/homepage:latest
+    container_name: homepage
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
     networks:
       - net_proxy
       - socket_proxy
-    ports:
-      - "127.0.0.1:7575:7575"
+    # ports:
+    #  - "$HOMEPAGE_PORT:3000"
     volumes:
-      - ${DATADIR}/homarr/configs:/app/data/configs
-      - ${DATADIR}/homarr/icons:/app/public/icons
+      - $DOCKERDIR/appdata/homepage:/app/config
+    environment:
+      TZ: $TZ
+      PUID: $PUID
+      PGID: $PGID

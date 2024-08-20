@@ -100,17 +100,6 @@
     state: directory
   become: true
 
-- name: Setup docker-compose file
-  ansible.builtin.template:
-    src: templates/docker-compose-udms.yml
-    dest: "{{ docker.data_dir }}/docker-compose-dms.yml"
-  become: true
-- name: Setup docker-compose file
-  ansible.builtin.template:
-    src: templates/docker-compose-hs.yml
-    dest: "{{ docker.data_dir }}/docker-compose-hs.yml"
-  become: true
-
 - name: Ensure docker data has 775 permissions
   file:
     path: { { docker.data_dir } }
@@ -126,7 +115,7 @@
     recurse: true
     default: yes
 
-- name: Set ACLs for user anand
+- name: Set ACLs for user adminuser
   acl:
     path: { { docker.data_dir } }
     entity: { { adminuser } }
@@ -150,14 +139,3 @@
     etype: group
     permissions: rwx
     recurse: true
-
-- name: Create folder for compose file
-  ansible.builtin.file:
-    path: "{{ docker.data_dir }}/compose/hs"
-    state: directory
-  become: true
-- name: Create folder for compose file
-  ansible.builtin.file:
-    path: "{{ docker.data_dir }}/compose/hs"
-    state: directory
-  become: true
