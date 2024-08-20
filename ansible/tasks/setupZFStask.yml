@@ -1,90 +1,95 @@
----
 - name: Install ZFS repository package
-  shell: "dnf install -y https://zfsonlinux.org/epel/zfs-release-2-3.el9.noarch.rpm"
+  ansible.builtin.shell: "dnf install -y https://zfsonlinux.org/epel/zfs-release-2-3.el9.noarch.rpm"
 
 - name: Disable original ZFS repository
-  command: yum-config-manager --disable zfs
+  ansible.builtin.command: yum-config-manager --disable zfs
 
 - name: Enable ZFS kernel module repository
-  command: yum-config-manager --enable zfs-kmod
+  ansible.builtin.command: yum-config-manager --enable zfs-kmod
 
 - name: Install ZFS
-  yum:
+  ansible.builtin.yum:
     name: zfs
     state: present
 
 - name: Add ZFS module to /etc/modules-load.d/zfs.conf
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/modules-load.d/zfs.conf
     line: "zfs"
     create: yes
+
 - name: Load ZFS modules
-  command: /sbin/modprobe zfs
-  become: yes
-# Gather space
-# Gather space usage about all imported ZFS pools
-- zpool_facts: properties='free,size'
+  ansible.builtin.command: /sbin/modprobe zfs
 
-- debug: msg='ZFS pool {{ item.name }} exists? -> [{{ item.name == zfs.poolName }}] It has {{ item.free }} free space out of {{ item.size }}.'
-  with_items: '{{ ansible_zfs_pools }}'
+- name: Gather space usage about all imported ZFS pools
+  community.general.zpool_facts:
+    properties: "free,size"
 
-- name: Create zsh pool '{{zfs.poolName}}' with 2disks and cache
-  shell: 'zpool create -o ashift=12 {{zfs.poolName}} mirror {{zfs.DISK1}} {{zfs.DISK2}} cache {{zfs.CACHEDISK}}'
-  when: 'not (ansible_zfs_pools|length > 0 and ansible_zfs_pools[0].name == zfs.poolName)'
+- name: Check ZFS pool existence and free space
+  ansible.builtin.debug:
+    msg: "ZFS pool {{ item.name }} exists? -> [{{ item.name == zfs.poolName }}] It has {{ item.free }} free space out of {{ item.size }}."
+  with_items: "{{ ansible_zfs_pools }}"
+
+- name: Create ZFS pool '{{ zfs.poolName }}' with 2 disks and cache
+  ansible.builtin.shell: >
+    zpool create -o ashift=12 {{ zfs.poolName }}
+    mirror {{ zfs.DISK1 }} {{ zfs.DISK2 }}
+    cache {{ zfs.CACHEDISK }}
+  when: >
+    not (ansible_zfs_pools | length > 0 and ansible_zfs_pools[0].name == zfs.poolName)
 
 - name: Create file system for personal files
-  zfs:
-    name: '{{zfs.poolName}}/personal'
+  community.general.zfs:
+    name: "{{ zfs.poolName }}/personal"
     state: present
 
 - name: Create file system for media files
-  zfs:
-    name: '{{zfs.poolName}}/media'
+  community.general.zfs:
+    name: "{{ zfs.poolName }}/media"
     state: present
 
 - name: Create file system for backups
-  zfs:
-    name: '{{zfs.poolName}}/backup'
+  community.general.zfs:
+    name: "{{ zfs.poolName }}/backup"
     state: present
 
 - name: Create file system for docker data
-  zfs:
-    name: '{{zfs.poolName}}/docker'
+  community.general.zfs:
+    name: "{{ zfs.poolName }}/docker"
     state: present
 
-
-# TODO check if already set
-- name: Enable auto snapshots for {{zfs.poolName}}
-  shell: zfs set com.sun:auto-snapshot=true {{zfs.poolName}}
+- name: Enable auto snapshots for {{ zfs.poolName }}
+  ansible.builtin.shell: >
+    zfs set com.sun:auto-snapshot=true {{ zfs.poolName }}
 
 - name: Enable all snapshots for personal files
-  shell: |
-    zfs set com.sun:auto-snapshot:monthly=true {{zfs.poolName}}/personal
-    zfs set com.sun:auto-snapshot:weekly=true {{zfs.poolName}}/personal
-    zfs set com.sun:auto-snapshot:daily=true {{zfs.poolName}}/personal
-    zfs set com.sun:auto-snapshot:hourly=true {{zfs.poolName}}/personal
-    zfs set com.sun:auto-snapshot:frequent=true {{zfs.poolName}}/personal
+  ansible.builtin.shell: |
+    zfs set com.sun:auto-snapshot:monthly=true {{ zfs.poolName }}/personal
+    zfs set com.sun:auto-snapshot:weekly=true {{ zfs.poolName }}/personal
+    zfs set com.sun:auto-snapshot:daily=true {{ zfs.poolName }}/personal
+    zfs set com.sun:auto-snapshot:hourly=true {{ zfs.poolName }}/personal
+    zfs set com.sun:auto-snapshot:frequent=true {{ zfs.poolName }}/personal
 
 - name: Enable all snapshots for media files
-  shell: |
-    zfs set com.sun:auto-snapshot:monthly=true {{zfs.poolName}}/media
-    zfs set com.sun:auto-snapshot:weekly=true {{zfs.poolName}}/media
-    zfs set com.sun:auto-snapshot:daily=true {{zfs.poolName}}/media
-    zfs set com.sun:auto-snapshot:hourly=true {{zfs.poolName}}/media
-    zfs set com.sun:auto-snapshot:frequent=true {{zfs.poolName}}/media
+  ansible.builtin.shell: |
+    zfs set com.sun:auto-snapshot:monthly=true {{ zfs.poolName }}/media
+    zfs set com.sun:auto-snapshot:weekly=true {{ zfs.poolName }}/media
+    zfs set com.sun:auto-snapshot:daily=true {{ zfs.poolName }}/media
+    zfs set com.sun:auto-snapshot:hourly=true {{ zfs.poolName }}/media
+    zfs set com.sun:auto-snapshot:frequent=true {{ zfs.poolName }}/media
 
 - name: Enable monthly snapshots for backup files
-  shell: |
-    zfs set com.sun:auto-snapshot:monthly=true {{zfs.poolName}}/backup
-    zfs set com.sun:auto-snapshot:weekly=false {{zfs.poolName}}/backup
-    zfs set com.sun:auto-snapshot:daily=false {{zfs.poolName}}/backup
-    zfs set com.sun:auto-snapshot:hourly=false {{zfs.poolName}}/backup
-    zfs set com.sun:auto-snapshot:frequent=false {{zfs.poolName}}/backup
+  ansible.builtin.shell: |
+    zfs set com.sun:auto-snapshot:monthly=true {{ zfs.poolName }}/backup
+    zfs set com.sun:auto-snapshot:weekly=false {{ zfs.poolName }}/backup
+    zfs set com.sun:auto-snapshot:daily=false {{ zfs.poolName }}/backup
+    zfs set com.sun:auto-snapshot:hourly=false {{ zfs.poolName }}/backup
+    zfs set com.sun:auto-snapshot:frequent=false {{ zfs.poolName }}/backup
 
 - name: Enable weekly snapshots for docker files
-  shell: |
-    zfs set com.sun:auto-snapshot:monthly=true {{zfs.poolName}}/docker
-    zfs set com.sun:auto-snapshot:weekly=true {{zfs.poolName}}/docker
-    zfs set com.sun:auto-snapshot:daily=false {{zfs.poolName}}/docker
-    zfs set com.sun:auto-snapshot:hourly=false {{zfs.poolName}}/docker
-    zfs set com.sun:auto-snapshot:frequent=false {{zfs.poolName}}/docker
+  ansible.builtin.shell: |
+    zfs set com.sun:auto-snapshot:monthly=true {{ zfs.poolName }}/docker
+    zfs set com.sun:auto-snapshot:weekly=true {{ zfs.poolName }}/docker
+    zfs set com.sun:auto-snapshot:daily=false {{ zfs.poolName }}/docker
+    zfs set com.sun:auto-snapshot:hourly=false {{ zfs.poolName }}/docker
+    zfs set com.sun:auto-snapshot:frequent=false {{ zfs.poolName }}/docker

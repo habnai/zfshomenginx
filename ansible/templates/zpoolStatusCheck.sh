@@ -1,24 +1,30 @@
 #!/bin/bash
 
-# pool to check
+# Define variables
 POOL="dataPool"
-
-# needed paths
 LOGFILE="/var/log/poolStatusCheck.log"
 ZFS="/sbin/zfs"
 
-# pushover data
-PO_TOKEN="pushOverTokenFromYourAccount"
-PO_UK="pushOverUserKeyFromYourAccount"
+# Function to send Pushover notification
+send_pushover() {
+  local title="$1"
+  local message="$2"
+  curl -s -F "token=$PO_TOKEN" \
+      -F "user=$PO_UK" \
+      -F "title=$title" \
+      -F "message=$message" https://api.pushover.net/1/messages.json
+}
 
-# -------------- program, don't change ---------------
+# Check zpool status
+zpool_status=$($ZFS status $POOL -x)
 
-if [ "$(zpool status $POOL -x)" != "pool '$POOL' is healthy" ]; then
-        echo "$(date) - Alarm - zPool $POOL is not healthy" >> $LOGFILE
-        curl -s -F "token=$PO_TOKEN" \
-    -F "user=$PO_UK" \
-    -F "title=Zpool status unhealthy!" \
-    -F "message=The status of pool $POOL does not seem to healthy" https://api.pushover.net/1/messages.json
+# Check for healthy pool
+if [[ "$zpool_status" != "pool '$POOL' is healthy" ]]; then
+  # Log unhealthy status
+  echo "$(date) - Alarm - zPool $POOL is not healthy" >> $LOGFILE
+  # Send Pushover notification
+  send_pushover "Zpool status unhealthy!" "The status of pool $POOL does not seem healthy. Details:\n$zpool_status"
 else
-        echo "$(date) - Zpool $POOL status is healthy" >> $LOGFILE
+  # Log healthy status
+  echo "$(date) - Zpool $POOL status is healthy" >> $LOGFILE
 fi

@@ -1,11 +1,15 @@
 ---
 - name: Setup docker .env file
-  template:
+  ansible.builtin.template:
     src: templates/dockerEnv.env
     dest: "../.env"
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
 
 - name: Install required packages
-  package:
+  ansible.builtin.package:
     name: "{{ item }}"
     state: present
   loop:
@@ -18,13 +22,15 @@
     - software-properties-common
     - gnupg2
     - curl
+    - acl
+  become: true
 
 - name: Add Docker repository
-  command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-
+  ansible.builtin.command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+  become: true
 
 - name: Install Docker
-  dnf:
+  ansible.builtin.dnf:
     name: "{{ item }}"
     state: present
   loop:
@@ -33,51 +39,125 @@
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
+  become: true
 
 - name: Start and enable Docker service
-  service:
+  ansible.builtin.service:
     name: docker
     state: started
     enabled: yes
+  become: true
 
 - name: Ensure docker group exists
-  group:
+  ansible.builtin.group:
     name: docker
     state: present
-- name: 'Add user {{ adminuser }} to docker group'
-  user:
-    name: '{{ adminuser }}'
+  become: true
+
+- name: Add user {{ adminuser }} to docker group
+  ansible.builtin.user:
+    name: "{{ adminuser }}"
     groups: docker
-    append: 'yes'
+    append: yes
+  become: true
 
 - name: Create folder for docker data
-  file:
-    path: "{{docker.data_dir}}"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}"
     state: directory
+  become: true
 
 - name: Create folder for custom
-  file:
-    path: "{{docker.data_dir}}/custom"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/compose"
     state: directory
+  become: true
 
 - name: Create folder for logs
-  file:
-    path: "{{docker.data_dir}}/logs"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/logs"
     state: directory
+  become: true
 
 - name: Create folder for scripts
-  file:
-    path: "{{docker.data_dir}}/scripts"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/scripts"
     state: directory
+  become: true
 
 - name: Create folder for secrets
-  file:
-    path: "{{docker.data_dir}}/secrets"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/secrets"
     state: directory
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
 
 - name: Create folder for shared
-  file:
-    path: "{{docker.data_dir}}/shared"
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/shared"
     state: directory
+  become: true
 
+- name: Setup docker-compose file
+  ansible.builtin.template:
+    src: templates/docker-compose-udms.yml
+    dest: "{{ docker.data_dir }}/docker-compose-dms.yml"
+  become: true
+- name: Setup docker-compose file
+  ansible.builtin.template:
+    src: templates/docker-compose-hs.yml
+    dest: "{{ docker.data_dir }}/docker-compose-hs.yml"
+  become: true
 
+- name: Ensure docker data has 775 permissions
+  file:
+    path: { { docker.data_dir } }
+    state: directory
+    mode: "0775"
+
+- name: Set default ACLs for user adminuser
+  acl:
+    path: { { docker.data_dir } }
+    entity: { { adminuser } }
+    etype: user
+    permissions: rwx
+    recurse: true
+    default: yes
+
+- name: Set ACLs for user anand
+  acl:
+    path: { { docker.data_dir } }
+    entity: { { adminuser } }
+    etype: user
+    permissions: rwx
+    recurse: true
+
+- name: Set default ACLs for group docker
+  acl:
+    path: { { docker.data_dir } }
+    entity: docker
+    etype: group
+    permissions: rwx
+    recurse: true
+    default: yes
+
+- name: Set ACLs for group docker
+  acl:
+    path: { { docker.data_dir } }
+    entity: docker
+    etype: group
+    permissions: rwx
+    recurse: true
+
+- name: Create folder for compose file
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/compose/hs"
+    state: directory
+  become: true
+- name: Create folder for compose file
+  ansible.builtin.file:
+    path: "{{ docker.data_dir }}/compose/hs"
+    state: directory
+  become: true

@@ -1,45 +1,40 @@
 ---
-- name: Ensure usergroups exist
-  group:
-    name: "{{item}}"
+- name: Ensure user groups exist
+  ansible.builtin.group:
+    name: "{{ item }}"
     state: present
-  with_items:
-    "{{usergroups}}"
+  loop: "{{ usergroups }}"
 
 - name: Create users
-  user:
-    name: "{{item.name}}"
-    groups: "{{item.groups}}"
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups }}"
     append: yes
     update_password: on_create
-  with_items:
-    "{{users}}"
+  loop: "{{ users }}"
 
 - name: Create personal folders for users
-  file:
-    path: /{{zfs.poolName}}/personal/{{item.name}}
+  ansible.builtin.file:
+    path: "/{{ zfs.poolName }}/personal/{{ item.name }}"
     state: directory
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
-    mode: u=rwx,g-rwx,o-rwx
-  with_items:
-    - "{{users}}"
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0700"
+  loop: "{{ users }}"
 
 - name: Create backup folder for users
-  file:
-    path: /{{zfs.poolName}}/backup/{{item.name}}
+  ansible.builtin.file:
+    path: "/{{ zfs.poolName }}/backup/{{ item.name }}"
     state: directory
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
-    mode: u=rwx,g-rwx,o-rwx
-  with_items:
-    - "{{users}}"
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0700"
+  loop: "{{ users }}"
 
 - name: Create shared folders
-  file:
-    path: "{{item.path}}"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
     state: directory
-    group: "{{shared_folders_group}}"
-    mode: u=rwx,g=rwx,o=x,g+s
-  with_items:
-    - "{{shared_folders}}"
+    group: "{{ shared_folders_group }}"
+    mode: "2771" # equivalent to u=rwx,g=rwx,o=rx,g+s
+  loop: "{{ shared_folders }}"

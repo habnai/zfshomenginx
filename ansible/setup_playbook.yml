@@ -1,21 +1,29 @@
 ---
-  - name: "Setting up the home server"
-    hosts: localhost
-    connection: local
+- name: "Setting up the home server"
+  hosts: localhost
+  connection: local
+  become: yes
+  become_user: root
 
-    # become root user, which is needed for most tasks
-    become: yes
-    become_user: root
-    vars_files:
-        - vars/main_vars.yml
-    handlers:
-    - name: Start and enable docker
+  vars_files:
+    - vars/main_vars.yml
+
+  handlers:
+    - name: Start and enable Docker
       systemd:
         name: docker
         state: started
         enabled: yes
-    tasks:
-    - import_tasks: tasks/setupZFStask.yml
-    - import_tasks: tasks/setupUsersTask.yml
-    - import_tasks: tasks/setupSambaTask.yml
-    - import_tasks: tasks/setupDocker.yml
+
+  tasks:
+    - name: Setup ZFS
+      import_tasks: tasks/setupZFStask.yml
+
+    - name: Setup Users
+      import_tasks: tasks/setupUsersTask.yml
+
+    - name: Setup Samba
+      import_tasks: tasks/setupSambaTask.yml
+
+    - name: Setup Docker
+      import_tasks: tasks/setupDocker.yml

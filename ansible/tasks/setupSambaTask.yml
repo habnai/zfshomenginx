@@ -1,40 +1,55 @@
 ---
 - name: Install generic needed packages
-  dnf:
+  ansible.builtin.dnf:
     name:
-    - samba
-    - samba-common
-    - samba-client
+      - samba
+      - samba-common
+      - samba-client
     state: latest
+  become: true # This should be a boolean (yes or no)
 
 - name: Start and enable the smb service
-  systemd:
+  ansible.builtin.systemd:
     name: smb
     enabled: yes
     state: started
+  become: true # Correct usage
 
 - name: Create/update samba users
-  include_tasks: "smbusers.yml"
-  loop: "{{users}}"
+  include_tasks: smbusers.yml
+  loop: "{{ users }}"
 
-- name: Configuring samba shares
-  template:
+- name: Configure samba shares
+  ansible.builtin.template:
     src: homeserver_smb.conf
     dest: /etc/samba/smb.conf
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
+  become: true # Correct usage
+  notify:
+    - Restart smbd
+
 - name: Restart smbd service after share configuration
-  systemd:
+  ansible.builtin.systemd:
     name: smb
     state: restarted
+  become: true # Correct usage
+
 - name: Add Samba service to firewall
-  firewalld:
+  ansible.builtin.firewalld:
     service: samba
     permanent: yes
     state: enabled
+  become: true # Correct usage
   notify:
     - Reload firewall
 
 - name: Reload firewall
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Restart smbd
+  ansible.builtin.systemd:
+    name: smb
+    state: restarted
+  become: true # Correct usage

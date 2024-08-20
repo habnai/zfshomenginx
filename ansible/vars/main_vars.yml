@@ -1,36 +1,54 @@
----
-# all non secret vars
-zfs: {
-  poolName: dataPool,
-  DISK1: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB1e8d1f50-ba9244f7',
-  DISK2: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB31894c10-b40e4ca9',
-  CACHEDISK: '/dev/disk/by-id/ata-VBOX_HARDDISK_VB53c5abdb-561c51fe',
-}
+zfs:
+  poolName: dataPool
+  disks:
+    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB1e8d1f50-ba9244f7
+    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB31894c10-b40e4ca9
+  cacheDisk:
+    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB53c5abdb-561c51fe
 
-usergroups:
+user_groups:
   - family
   - admins
 
 users:
-  - {name: 'mainuser', groups: 'family, admins', smbpasswd: 'mainuser'}
-  - {name: 'otheruser', groups: 'family', smbpasswd: 'otheruser'}
-  - {name: 'thirduser', groups: 'family', smbpasswd: 'thirduser'}
-  - {name: 'userNotInGroups', groups: '', smbpasswd: 'userNotInGroups'}
+  - name: mainuser
+    groups:
+      - family
+      - admins
+    # Replace smbpasswd with a secure password storage mechanism
+    # smbpasswd: 'mainuser'
+  - name: otheruser
+    groups:
+      - family
+    # Replace smbpasswd with a secure password storage mechanism
+    # smbpasswd: 'otheruser'
+  - name: thirduser
+    groups:
+      - family
+    # Replace smbpasswd with a secure password storage mechanism
+    # smbpasswd: 'thirduser'
+  - name: userNotInGroups
+    # Replace smbpasswd with a secure password storage mechanism
+    # smbpasswd: 'userNotInGroups'
 
-adminuser: mainuser # should be an existing one from above
+admin_user: mainuser
 
 shared_folders:
-  - {name: 'Images', path: '/{{zfs.poolName}}/media/images'}
-  - {name: 'Music', path: '/{{zfs.poolName}}/media/music'}
-  - {name: 'Shared folder', path: '/{{zfs.poolName}}/personal/all'}
-  - {name: 'Shared Backup Folder', path: '/{{zfs.poolName}}/backup/all'}
+  - name: images
+    path: /{{ zfs.poolName }}/media/images
+  - name: music
+    path: /{{ zfs.poolName }}/media/music
+  - name: shared_folder
+    path: /{{ zfs.poolName }}/personal/all
+  - name: shared_backup_folder
+    path: /{{ zfs.poolName }}/backup/all
 
 shared_folders_group: family
 
-docker: {
-  external_network: net_proxy,
-  data_dir: '/{{zfs.poolName}}/docker/data',
-  # data for docker env
-  PUID: '1000',
-  PGID: '115'
-}
+docker:
+  external_network: net_proxy
+  data_dir: /{{ zfs.poolName }}/docker/data
+  media_storag: /media/storage
+  hostname: udms
+  puid: 1000
+  pgid: 115
