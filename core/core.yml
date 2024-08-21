@@ -17,13 +17,7 @@ networks:
 ########################### SECRETS
 secrets:
   basic_auth_credentials:
-    file: $DATADIR/secrets/basic_auth_credentials
-  guac_db_name:
-    file: $DATADIR/secrets/guac_db_name
-  guac_mysql_user:
-    file: $DATADIR/secrets/guac_mysql_user
-  guac_mysql_password:
-    file: $DATADIR/secrets/guac_mysql_password
+    file: ${DATADIR}/secrets/basic_auth_credentials
 services:
   # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
   socket-proxy:
@@ -34,7 +28,7 @@ services:
     restart: unless-stopped
     networks:
       socket_proxy:
-        ipv4_address: 192.168.91.254 # You can specify a static IP
+        ipv4_address: 10.11.91.254 # You can specify a static IP
     # privileged: true # true for VM. False for unprivileged LXC container.
     ports:
       #  - "$ZEROTIER_IP_CLOUDSERVER:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
@@ -76,7 +70,7 @@ services:
       - VOLUMES=1 # Portainer
   portainer:
     container_name: portainer
-    image: portainer/portainer-ee:latest # Use portainer-ce if you do no have a Business Edition license key
+    image: portainer/portainer-ce:latest # Use portainer-ce if you do no have a Business Edition license key
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
@@ -89,9 +83,9 @@ services:
       - "9000:9000"
     volumes:
       # - /var/run/docker.sock:/var/run/docker.sock:ro # # Use Docker Socket Proxy instead for improved security
-      - $DATADIR/portainer/data:/data # Change to local directory if you want to save/transfer config locally
+      - ${DATADIR}/appdata/portainer/data:/data # Change to local directory if you want to save/transfer config locally
     environment:
-      - TZ=$TZ
+      - TZ=${TZ}
   homepage:
     image: ghcr.io/benphelps/homepage:latest
     container_name: homepage
@@ -101,11 +95,11 @@ services:
     networks:
       - net_proxy
       - socket_proxy
-    # ports:
-    #  - "$HOMEPAGE_PORT:3000"
+    ports:
+      - "3000:3000"
     volumes:
-      - $DOCKERDIR/appdata/homepage:/app/config
+      - ${DATADIR}/appdata/homepage:/app/config
     environment:
       TZ: $TZ
-      PUID: $PUID
-      PGID: $PGID
+      PUID: ${PUID}
+      PGID: ${PGID}

@@ -1,7 +1,6 @@
 ---
 - name: "Setting up the home server"
   hosts: localhost
-  connection: local
   become: yes
   become_user: root
 

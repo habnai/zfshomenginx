@@ -16,10 +16,8 @@
     - dnf-plugins-core
     - yum-utils
     - git
-    - apt-transport-https
     - ca-certificates
     - wget
-    - software-properties-common
     - gnupg2
     - curl
     - acl
@@ -67,12 +65,6 @@
     state: directory
   become: true
 
-- name: Create folder for custom
-  ansible.builtin.file:
-    path: "{{ docker.data_dir }}/compose"
-    state: directory
-  become: true
-
 - name: Create folder for logs
   ansible.builtin.file:
     path: "{{ docker.data_dir }}/logs"
@@ -102,40 +94,6 @@
 
 - name: Ensure docker data has 775 permissions
   file:
-    path: { { docker.data_dir } }
+    path: "{{ docker.data_dir }}"
     state: directory
     mode: "0775"
-
-- name: Set default ACLs for user adminuser
-  acl:
-    path: { { docker.data_dir } }
-    entity: { { adminuser } }
-    etype: user
-    permissions: rwx
-    recurse: true
-    default: yes
-
-- name: Set ACLs for user adminuser
-  acl:
-    path: { { docker.data_dir } }
-    entity: { { adminuser } }
-    etype: user
-    permissions: rwx
-    recurse: true
-
-- name: Set default ACLs for group docker
-  acl:
-    path: { { docker.data_dir } }
-    entity: docker
-    etype: group
-    permissions: rwx
-    recurse: true
-    default: yes
-
-- name: Set ACLs for group docker
-  acl:
-    path: { { docker.data_dir } }
-    entity: docker
-    etype: group
-    permissions: rwx
-    recurse: true

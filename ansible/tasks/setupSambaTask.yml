@@ -36,17 +36,18 @@
     state: restarted
   become: true # Correct usage
 
-- name: Add Samba service to firewall
-  ansible.builtin.firewalld:
+- name: Add Samba service to firewalld
+  firewalld:
     service: samba
+    zone: public
     permanent: yes
     state: enabled
-  become: true # Correct usage
-  notify:
-    - Reload firewall
+    immediate: yes
 
-- name: Reload firewall
-  ansible.builtin.meta: flush_handlers
+- name: Reload firewalld to apply changes
+  systemd:
+    name: firewalld
+    state: reloaded
 
 - name: Restart smbd
   ansible.builtin.systemd:

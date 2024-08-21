@@ -1,53 +1,35 @@
 zfs:
-  poolName: dataPool
-  disks:
-    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB1e8d1f50-ba9244f7
-    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB31894c10-b40e4ca9
-  cacheDisk:
-    - /dev/disk/by-id/ata-VBOX_HARDDISK_VB53c5abdb-561c51fe
+  {
+    poolName: dataPool,
+    DISK1: "/dev/disk/by-id/scsi-SATA_VBOX_HARDDISK_VB61655acf-9bfaf9c4",
+    DISK2: "/dev/disk/by-id/scsi-SATA_VBOX_HARDDISK_VBbfc11fb4-dc8b053e",
+    CACHEDISK: "/dev/disk/by-id/scsi-SATA_VBOX_HARDDISK_VBc08b0182-09be4c50",
+  }
 
 user_groups:
   - family
   - admins
 
 users:
-  - name: mainuser
-    groups:
-      - family
-      - admins
-    # Replace smbpasswd with a secure password storage mechanism
-    # smbpasswd: 'mainuser'
-  - name: otheruser
-    groups:
-      - family
-    # Replace smbpasswd with a secure password storage mechanism
-    # smbpasswd: 'otheruser'
-  - name: thirduser
-    groups:
-      - family
-    # Replace smbpasswd with a secure password storage mechanism
-    # smbpasswd: 'thirduser'
-  - name: userNotInGroups
-    # Replace smbpasswd with a secure password storage mechanism
-    # smbpasswd: 'userNotInGroups'
+  - { name: "habnai", groups: "family, admins", smbpasswd: "mainuser" }
+  - { name: "otheruser", groups: "family", smbpasswd: "otheruser" }
+  - { name: "thirduser", groups: "family", smbpasswd: "thirduser" }
+  - { name: "userNotInGroups", groups: "", smbpasswd: "userNotInGroups" }
 
-admin_user: mainuser
+
+adminuser: habnai
 
 shared_folders:
-  - name: images
-    path: /{{ zfs.poolName }}/media/images
-  - name: music
-    path: /{{ zfs.poolName }}/media/music
-  - name: shared_folder
-    path: /{{ zfs.poolName }}/personal/all
-  - name: shared_backup_folder
-    path: /{{ zfs.poolName }}/backup/all
+  - { name: "Images", path: "/{{zfs.poolName}}/media/images" }
+  - { name: "files", path: "/{{zfs.poolName}}/personal/files" }
+  - { name: "Shared folder", path: "/{{zfs.poolName}}/personal/all" }
+  - { name: "Shared Backup Folder", path: "/{{zfs.poolName}}/backup/all" }
+
 
 shared_folders_group: family
 
 docker:
   data_dir: /{{ zfs.poolName }}/docker/data
   media_storage: /media/storage
-  hostname: udms
-  puid: 1000
-  pgid: 115
+  PUID: 1000
+  PGID: 115
